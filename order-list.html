@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>两人小饭桌｜订单查看</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#f8d9bc">
+<link rel="apple-touch-icon" href="./icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#fffbf5;color:#443830}
+body{
+    padding:16px;padding-bottom:calc(40px + env(safe-area-inset-bottom,0px));
+    min-height:100%;display:flex;flex-direction:column;
+}
+.title{
+    text-align:center;font-size:22px;color:#6b4f3f;padding:16px 0;
+    font-weight:600;margin-bottom:8px;flex-shrink:0;
+}
+.refresh-btn{
+    display:block;margin:0 auto 20px;border:none;background:#f7a066;color:#fff;
+    padding:10px 28px;border-radius:99px;font-size:16px;cursor:pointer;
+    transition:0.15s;touch-action:manipulation;flex-shrink:0;font-weight:500;
+    box-shadow:0 3px 10px rgba(247,160,102,0.3);
+}
+.refresh-btn:active{transform:scale(0.96);background:#e89055}
+.refresh-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+.empty-tip{
+    text-align:center;margin-top:60px;color:#887060;font-size:16px;
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+}
+.empty-tip .icon{font-size:48px;margin-bottom:12px;opacity:0.7}
+#wrap{flex:1}
+.order-item{
+    background:#fff;border-radius:18px;padding:16px;
+    box-shadow:0 2px 8px rgba(170,140,110,0.11);margin-bottom:14px;
+    transition:box-shadow 0.2s;
+}
+.order-item:active{box-shadow:0 2px 4px rgba(170,140,110,0.15)}
+.order-user{
+    font-weight:600;color:#f7a066;font-size:16px;margin-bottom:8px;
+    display:flex;align-items:center;gap:6px;
+}
+.order-time{
+    font-size:13px;color:#887060;margin-bottom:10px;
+    display:flex;align-items:center;gap:4px;
+}
+.order-food{
+    font-size:15px;line-height:1.6;word-wrap:break-word;white-space:pre-wrap;
+    color:#443830;
+}
+.loading-tip{
+    text-align:center;padding:40px 0;color:#887060;font-size:15px;
+}
+.loading-tip .spinner{
+    display:inline-block;width:20px;height:20px;border:2px solid #f0e3d9;
+    border-top-color:#f7a066;border-radius:50%;animation:spin 0.8s linear infinite;
+    margin-right:8px;vertical-align:middle;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="title">两人小饭桌 · 订单列表</div>
+<button class="refresh-btn" id="refresh">🔄 刷新订单</button>
+<div id="wrap"></div>
+<div class="empty-tip" id="empty">
+    <div class="icon">🍽️</div>
+    <div>暂无订单</div>
+</div>
+
+<script>
+// ========== 配置 ==========
+const TEABLE_TOKEN = "teable_accr1FLtf0I5pAsIMJE_yOaQo1Km/M60DPL2qyGZYnJDqUBRF+IG+5yNUiPoPXY=";
+const TABLE_ID = "tblblqXoomn1rCrIid6";
+const API_URL = "/api/order";
+
+const wrap = document.getElementById("wrap");
+const emptyDom = document.getElementById("empty");
+const refreshBtn = document.getElementById("refresh");
+
+let loading = false;
+
+// 格式化时间（今天显示时分，其他显示日期+时间）
+function formatTime(isoStr) {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr;
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const pad = n => String(n).padStart(2, "0");
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    if (isToday) return `今天 ${timeStr}`;
+    const isSameYear = d.getFullYear() === now.getFullYear();
+    if (isSameYear) return `${d.getMonth() + 1}月${d.getDate()}日 ${timeStr}`;
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${timeStr}`;
+}
+
+// 渲染订单列表
+function renderOrders(records) {
+    wrap.innerHTML = "";
+
+    if (!records || records.length === 0) {
+        emptyDom.style.display = "flex";
+        return;
+    }
+    emptyDom.style.display = "none";
+
+    // 倒序，最新的在最上面
+    const sorted = [...records].reverse();
+    const fragment = document.createDocumentFragment();
+
+    sorted.forEach(r => {
+        const fields = r.fields || {};
+        const user = fields["下单人"] || "匿名";
+        const food = fields["菜品"] || fields["菜品明细"] || "";
+        const createTime = r.createdTime;
+
+        const div = document.createElement("div");
+        div.className = "order-item";
+
+        const userDiv = document.createElement("div");
+        userDiv.className = "order-user";
+        userDiv.textContent = `👤 ${user}`;
+
+        const timeDiv = document.createElement("div");
+        timeDiv.className = "order-time";
+        timeDiv.textContent = `🕒 ${formatTime(createTime)}`;
+
+        const foodDiv = document.createElement("div");
+        foodDiv.className = "order-food";
+        foodDiv.textContent = `🥘 ${food || "（无菜品）"}`;
+
+        div.appendChild(userDiv);
+        div.appendChild(timeDiv);
+        div.appendChild(foodDiv);
+        fragment.appendChild(div);
+    });
+
+    wrap.appendChild(fragment);
+}
+
+// 加载订单
+async function loadOrder() {
+    if (loading) return;
+    loading = true;
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "加载中...";
+
+    // 显示加载提示
+    wrap.innerHTML = `<div class="loading-tip"><span class="spinner"></span>正在读取订单...</div>`;
+    emptyDom.style.display = "none";
+
+    try {
+        const res = await fetch(API_URL, {
+            headers: {
+                "Authorization": "Bearer " + TEABLE_TOKEN
+            }
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const json = await res.json();
+        renderOrders(json.records);
+    } catch (e) {
+        console.error(e);
+        wrap.innerHTML = "";
+        emptyDom.style.display = "flex";
+        emptyDom.innerHTML = `
+            <div class="icon">😵</div>
+            <div>读取订单失败</div>
+            <div style="font-size:13px;margin-top:8px;color:#b0a090;">${e.message || "请检查网络或Token"}</div>
+        `;
+    } finally {
+        loading = false;
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = "🔄 刷新订单";
+    }
+}
+
+refreshBtn.onclick = loadOrder;
+
+// 启动时加载
+loadOrder();
+
+// 注册 Service Worker
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+    });
+}
+</script>
+</body>
+</html>
