@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>两人小饭桌 · 份数版</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#f8d9bc">
+<link rel="apple-touch-icon" href="./icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#fffbf5}
+body{display:flex;flex-direction:column;position:relative}
+.container{display:flex;flex:1;overflow:hidden;min-height:0}
+.title{
+    text-align:center;font-size:22px;color:#6b4f3f;padding:16px 0;font-weight:600;
+    background:#fffbf5;flex-shrink:0;z-index:2;
+}
+/* 左侧菜系侧边栏 */
+.category-wrap{
+    width:100px;overflow-y:auto;scrollbar-width:none;padding:8px 6px;
+    background:#fff;border-right:1px solid #f0e3d9;flex-shrink:0;
+    -webkit-overflow-scrolling:touch;
+}
+.category-wrap::-webkit-scrollbar{display:none}
+.category-item{
+    padding:12px 6px;margin-bottom:8px;background:#ffffff;border-radius:12px;
+    font-size:14px;color:#66554b;text-align:center;
+    box-shadow:0 2px 6px rgba(180,150,120,0.1);transition:0.2s;
+    cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    user-select:none;
+}
+.category-item.active{background:#f7a066;color:#fff;font-weight:500}
+/* 右侧区域 */
+.right-area{
+    flex:1;overflow-y:auto;padding:0 12px 220px;min-width:0;
+    -webkit-overflow-scrolling:touch;
+}
+.search-bar{
+    position:sticky;top:0;z-index:5;background:#fffbf5;
+    padding:10px 0 8px;display:flex;flex-direction:column;gap:8px;
+}
+.search-input{
+    width:100%;border:none;border-radius:99px;padding:10px 16px;
+    font-size:15px;background:#fff;color:#443830;
+    box-shadow:0 2px 8px rgba(170,140,110,0.1);outline:none;
+}
+.search-input::placeholder{color:#b0a090}
+.search-input:focus{box-shadow:0 2px 8px rgba(247,160,102,0.25)}
+.filter-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:13px;color:#887060;padding:0 2px;
+}
+.filter-toggle{
+    display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
+    padding:6px 12px;border-radius:99px;background:#fff;
+    box-shadow:0 1px 4px rgba(170,140,110,0.12);transition:0.15s;
+}
+.filter-toggle:active{transform:scale(0.97)}
+.filter-toggle input{accent-color:#f7a066;cursor:pointer}
+.filter-count{color:#b0a090;font-size:12px}
+.food-list{display:flex;flex-direction:column;gap:10px}
+.food-row{
+    display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;
+    padding:10px;box-shadow:0 2px 8px rgba(170,140,110,0.08);flex-wrap:nowrap;
+}
+.food-img-wrap{
+    width:64px;height:64px;aspect-ratio:1/1;border-radius:14px;overflow:hidden;
+    flex-shrink:0;background:#f5efe6;position:relative;
+}
+.food-img{width:100%;height:100%;display:block;object-fit:cover}
+.food-img[data-error="1"]::after{
+    content:"🍽";position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;font-size:24px;color:#ccc;background:#f5efe6;
+}
+.food-name{
+    width:76px;font-size:15px;color:#443830;flex-shrink:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ctrl-group{display:flex;align-items:center;gap:12px;margin-left:auto;flex-shrink:0;flex-wrap:wrap}
+.ctrl-item{display:flex;align-items:center;gap:6px}
+.ctrl-name{font-size:13px;color:#776559;white-space:nowrap}
+.ctrl{display:flex;align-items:center;gap:4px}
+.ctrl button{
+    width:30px;height:30px;border-radius:50%;border:none;background:#fff3e9;
+    color:#d47b46;font-size:18px;transition:0.15s;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;line-height:1;
+    touch-action:manipulation;
+}
+.ctrl button:active{background:#f7a066;color:#fff;transform:scale(0.92)}
+.num{
+    font-size:15px;width:26px;text-align:center;color:#55443c;
+    font-variant-numeric:tabular-nums;
+}
+.list-empty{
+    text-align:center;padding:40px 0;color:#b0a090;font-size:14px;
+}
+/* 预览栏 —— 加上图片 */
+.preview-bar{
+    position:fixed;left:100px;right:0;bottom:72px;background:#fff;
+    padding:10px 14px;box-shadow:0 -2px 8px rgba(170,140,110,0.1);
+    z-index:3;max-height:160px;overflow-y:auto;
+}
+.preview-inner{max-width:700px;margin:0 auto}
+.preview-title{font-size:13px;color:#887060;margin-bottom:6px}
+.preview-text{
+    font-size:14px;color:#443830;min-height:20px;word-wrap:break-word;
+    line-height:1.6;max-height:110px;overflow-y:auto;
+}
+/* 预览项带图片 */
+.preview-item{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#fef7f0;border-radius:20px;padding:4px 10px 4px 4px;
+    margin:0 6px 6px 0;vertical-align:middle;
+    box-shadow:0 1px 4px rgba(170,140,110,0.08);
+    max-width:100%;
+}
+.preview-img{
+    width:28px;height:28px;border-radius:50%;object-fit:cover;
+    background:#f5efe6;flex-shrink:0;
+}
+.preview-name{
+    font-size:13px;color:#443830;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;max-width:100px;
+}
+.preview-num{
+    font-size:12px;color:#d47b46;font-weight:500;white-space:nowrap;
+}
+/* 底部提交按钮 */
+.bottom-bar{
+    position:fixed;left:100px;right:0;bottom:0;background:#ffffff;
+    padding:10px 14px;box-shadow:0 -3px 12px rgba(170,140,110,0.12);
+    z-index:4;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+}
+.bottom-inner{max-width:700px;margin:0 auto;display:flex;justify-content:flex-end}
+.submit{
+    padding:12px 36px;border:none;border-radius:99px;background:#f7a066;
+    color:#fff;font-size:17px;box-shadow:0 3px 10px rgba(247,160,102,0.3);
+    cursor:pointer;transition:0.15s;touch-action:manipulation;
+    font-weight:500;
+}
+.submit:active{transform:scale(0.96);background:#e89055}
+.submit:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+
+/* 平板/桌面适配 */
+@media (min-width:600px){
+    .category-wrap{width:120px}
+    .preview-bar{left:120px}
+    .bottom-bar{left:120px}
+    .food-img-wrap{width:72px;height:72px}
+    .food-name{width:90px;font-size:15px}
+    .ctrl-group{gap:18px}
+}
+
+/* 极窄屏适配 */
+@media (max-width:360px){
+    .category-wrap{width:84px}
+    .preview-bar{left:84px}
+    .bottom-bar{left:84px}
+    .food-name{width:62px;font-size:14px}
+    .ctrl-group{gap:6px}
+    .ctrl-name{font-size:12px}
+    .ctrl button{width:28px;height:28px;font-size:16px}
+    .num{width:22px;font-size:14px}
+    .preview-name{max-width:70px;font-size:12px}
+}
+
+/* 下单人输入栏 */
+.user-bar{
+    display:flex;align-items:center;gap:8px;padding:6px 16px 10px;
+    font-size:14px;color:#776559;flex-shrink:0;
+}
+.user-bar input{
+    flex:1;border:none;border-radius:99px;padding:8px 14px;font-size:14px;
+    background:#fff;color:#443830;box-shadow:0 2px 6px rgba(170,140,110,0.1);
+    outline:none;
+}
+.user-bar input:focus{box-shadow:0 2px 8px rgba(247,160,102,0.25)}
+
+/* 查看订单链接 */
+.bottom-inner{align-items:center;gap:10px}
+.view-order{
+    padding:10px 20px;border-radius:99px;background:#fff3e9;color:#d47b46;
+    text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(170,140,110,0.12);
+}
+.view-order:active{transform:scale(0.96)}
+</style>
+</head>
+<body>
+<div class="title">两人小饭桌</div>
+<div class="user-bar">
+    <span>👤 下单人：</span>
+    <input id="userNameInput" type="text" placeholder="输入你的名字" autocomplete="off">
+</div>
+<div class="container">
+    <div class="category-wrap" id="categoryWrap">
+        <div class="category-item active" data-cate="all">全部</div>
+        <div class="category-item" data-cate="hotpot">火锅菜品</div>
+        <div class="category-item" data-cate="snack">饮品炸物</div>
+        <div class="category-item" data-cate="sichuan">川菜</div>
+        <div class="category-item" data-cate="xiang">湘菜</div>
+        <div class="category-item" data-cate="cantonese">粤菜</div>
+        <div class="category-item" data-cate="huaiyang">淮扬菜</div>
+        <div class="category-item" data-cate="shandong">鲁菜</div>
+        <div class="category-item" data-cate="zhe">浙菜</div>
+        <div class="category-item" data-cate="dongbei">东北菜</div>
+        <div class="category-item" data-cate="min">闽菜</div>
+        <div class="category-item" data-cate="hui">徽菜</div>
+        <div class="category-item" data-cate="home">家常小炒</div>
+    </div>
+    <div class="right-area" id="rightArea">
+        <div class="search-bar">
+            <input class="search-input" id="searchInput" type="search" placeholder="🔍 搜索菜名..." autocomplete="off">
+            <div class="filter-row">
+                <label class="filter-toggle">
+                    <input type="checkbox" id="onlySelected">
+                    <span>只看已选</span>
+                </label>
+                <span class="filter-count" id="filterCount"></span>
+            </div>
+        </div>
+        <div class="food-list" id="foodList"></div>
+    </div>
+</div>
+<!-- 实时已选预览（带图片） -->
+<div class="preview-bar" id="previewBar">
+    <div class="preview-inner">
+        <div class="preview-title">🥘 已选菜品：</div>
+        <div class="preview-text" id="previewText">暂无</div>
+    </div>
+</div>
+<div class="bottom-bar">
+  <div class="bottom-inner">
+    <a class="view-order" href="./order-list.html">📋 查看订单</a>
+    <button class="submit" id="submitBtn">提交订单</button>
+  </div>
+</div>
+<script>
+// ========== 数据配置 ==========
+const TEABLE_TOKEN = "teable_accr1FLtf0I5pAsIMJE_yOaQo1Km/M60DPL2qyGZYnJDqUBRF+IG+5yNUiPoPXY=";
+const TABLE_ID = "tblblqXoomn1rCrIid6";
+const API_URL = "/api/order";
+const CART_STORAGE_KEY = "xiaofanzhuo_cart_v2"; // 版本升级，避免旧数据冲突
+
+const foodList = [
+    // 火锅专区
+    {name:"肥牛卷",cate:"hotpot",img:"./img/肥牛卷.png"},
+    {name:"肥羊卷",cate:"hotpot",img:"./img/肥羊卷.png"},
+    {name:"毛肚",cate:"hotpot",img:"./img/毛肚.png"},
+    {name:"黄喉",cate:"hotpot",img:"./img/黄喉.png"},
+    {name:"鸭肠",cate:"hotpot",img:"./img/鸭肠.png"},
+    {name:"虾滑",cate:"hotpot",img:"./img/虾滑.png"},
+    {name:"午餐肉",cate:"hotpot",img:"./img/午餐肉.png"},
+    {name:"贡丸",cate:"hotpot",img:"./img/贡丸.png"},
+    {name:"鱼豆腐",cate:"hotpot",img:"./img/鱼豆腐.png"},
+    {name:"金针菇",cate:"hotpot",img:"./img/金针菇.png"},
+    {name:"娃娃菜",cate:"hotpot",img:"./img/娃娃菜.png"},
+    {name:"土豆",cate:"hotpot",img:"./img/土豆.png"},
+    {name:"藕片",cate:"hotpot",img:"./img/藕片.png"},
+    {name:"鸭血",cate:"hotpot",img:"./img/鸭血.png"},
+    {name:"海带结",cate:"hotpot",img:"./img/海带结.png"},
+    {name:"豆皮",cate:"hotpot",img:"./img/豆皮.png"},
+    {name:"冻豆腐",cate:"hotpot",img:"./img/冻豆腐.png"},
+    {name:"川粉",cate:"hotpot",img:"./img/川粉.png"},
+    // 饮品炸物
+    {name:"奶茶",cate:"snack",img:"./img/奶茶.png"},
+    {name:"可乐",cate:"snack",img:"./img/可乐.png"},
+    {name:"炸鸡",cate:"snack",img:"./img/炸鸡.png"},
+    {name:"薯条",cate:"snack",img:"./img/薯条.png"},
+    {name:"披萨",cate:"snack",img:"./img/披萨.png"},
+    {name:"柠檬茶",cate:"snack",img:"./img/柠檬茶.png"},
+    {name:"鸡米花",cate:"snack",img:"./img/鸡米花.png"},
+    {name:"蛋挞",cate:"snack",img:"./img/蛋挞.png"},
+    {name:"香芋派",cate:"snack",img:"./img/香芋派.png"},
+    {name:"冰红茶",cate:"snack",img:"./img/冰红茶.png"},
+    {name:"橙汁",cate:"snack",img:"./img/橙汁.png"},
+    {name:"薯条鸡块套餐",cate:"snack",img:"./img/薯条鸡块套餐.png"},
+    // 川菜
+    {name:"麻婆豆腐",cate:"sichuan",img:"./img/麻婆豆腐.png"},
+    {name:"水煮肉片",cate:"sichuan",img:"./img/水煮肉片.png"},
+    {name:"鱼香肉丝",cate:"sichuan",img:"./img/鱼香肉丝.png"},
+    {name:"回锅肉",cate:"sichuan",img:"./img/回锅肉.png"},
+    {name:"辣子鸡",cate:"sichuan",img:"./img/辣子鸡.png"},
+    {name:"毛血旺",cate:"sichuan",img:"./img/毛血旺.png"},
+    {name:"干锅大虾",cate:"sichuan",img:"./img/干锅大虾.png"},
+    {name:"酸菜鱼",cate:"sichuan",img:"./img/酸菜鱼.png"},
+    {name:"担担面",cate:"sichuan",img:"./img/担担面.png"},
+    {name:"夫妻肺片",cate:"sichuan",img:"./img/夫妻肺片.png"},
+    {name:"水煮鱼",cate:"sichuan",img:"./img/水煮鱼.png"},
+    {name:"泡椒凤爪",cate:"sichuan",img:"./img/泡椒凤爪.png"},
+    {name:"干锅花菜",cate:"sichuan",img:"./img/干锅花菜.png"},
+    {name:"藤椒鱼",cate:"sichuan",img:"./img/藤椒鱼.png"},
+    {name:"水煮牛蛙",cate:"sichuan",img:"./img/水煮牛蛙.png"},
+    // 湘菜
+    {name:"剁椒鱼头",cate:"xiang",img:"./img/剁椒鱼头.png"},
+    {name:"小炒黄牛肉",cate:"xiang",img:"./img/小炒黄牛肉.png"},
+    {name:"辣椒炒肉",cate:"xiang",img:"./img/辣椒炒肉.png"},
+    {name:"腊味合蒸",cate:"xiang",img:"./img/腊味合蒸.png"},
+    {name:"香干炒肉",cate:"xiang",img:"./img/香干炒肉.png"},
+    {name:"擂辣椒皮蛋",cate:"xiang",img:"./img/擂辣椒皮蛋.png"},
+    {name:"永州血鸭",cate:"xiang",img:"./img/永州血鸭.png"},
+    {name:"干锅肥肠",cate:"xiang",img:"./img/干锅肥肠.png"},
+    {name:"酸辣鸡杂",cate:"xiang",img:"./img/酸辣鸡杂.png"},
+    {name:"手撕包菜",cate:"xiang",img:"./img/手撕包菜.png"},
+    {name:"腊肉炒蒜苔",cate:"xiang",img:"./img/腊肉炒蒜苔.png"},
+    // 粤菜
+    {name:"白切鸡",cate:"cantonese",img:"./img/白切鸡.png"},
+    {name:"清蒸鲈鱼",cate:"cantonese",img:"./img/清蒸鲈鱼.png"},
+    {name:"蚝油生菜",cate:"cantonese",img:"./img/蚝油生菜.png"},
+    {name:"豉汁蒸排骨",cate:"cantonese",img:"./img/豉汁蒸排骨.png"},
+    {name:"广式烧鹅",cate:"cantonese",img:"./img/广式烧鹅.png"},
+    {name:"虾饺皇",cate:"cantonese",img:"./img/虾饺皇.png"},
+    {name:"腊味煲仔饭",cate:"cantonese",img:"./img/腊味煲仔饭.png"},
+    {name:"白灼菜心",cate:"cantonese",img:"./img/白灼菜心.png"},
+    {name:"蜜汁叉烧",cate:"cantonese",img:"./img/蜜汁叉烧.png"},
+    {name:"猪肚鸡",cate:"cantonese",img:"./img/猪肚鸡.png"},
+    {name:"烧麦",cate:"cantonese",img:"./img/烧麦.png"},
+    {name:"菠萝咕咾肉",cate:"cantonese",img:"./img/菠萝咕咾肉.png"},
+    // 淮扬菜
+    {name:"狮子头",cate:"huaiyang",img:"./img/狮子头.png"},
+    {name:"清炖鸡汤",cate:"huaiyang",img:"./img/清炖鸡汤.png"},
+    {name:"文思豆腐",cate:"huaiyang",img:"./img/文思豆腐.png"},
+    {name:"大煮干丝",cate:"huaiyang",img:"./img/大煮干丝.png"},
+    {name:"清炒河虾仁",cate:"huaiyang",img:"./img/清炒河虾仁.png"},
+    {name:"扬州炒饭",cate:"huaiyang",img:"./img/扬州炒饭.png"},
+    {name:"清炖蟹粉狮子头",cate:"huaiyang",img:"./img/清炖蟹粉狮子头.png"},
+    // 鲁菜
+    {name:"葱烧海参",cate:"shandong",img:"./img/葱烧海参.png"},
+    {name:"糖醋鲤鱼",cate:"shandong",img:"./img/糖醋鲤鱼.png"},
+    {name:"九转大肠",cate:"shandong",img:"./img/九转大肠.png"},
+    {name:"爆炒腰花",cate:"shandong",img:"./img/爆炒腰花.png"},
+    {name:"糟熘鱼片",cate:"shandong",img:"./img/糟熘鱼片.png"},
+    {name:"油焖大虾",cate:"shandong",img:"./img/油焖大虾.png"},
+    {name:"木须肉",cate:"shandong",img:"./img/木须肉.png"},
+    {name:"糖醋里脊",cate:"shandong",img:"./img/糖醋里脊.png"},
+    // 浙菜
+    {name:"西湖醋鱼",cate:"zhe",img:"./img/西湖醋鱼.png"},
+    {name:"东坡肉",cate:"zhe",img:"./img/东坡肉.png"},
+    {name:"龙井虾仁",cate:"zhe",img:"./img/龙井虾仁.png"},
+    {name:"叫花鸡",cate:"zhe",img:"./img/叫花鸡.png"},
+    {name:"蜜汁火方",cate:"zhe",img:"./img/蜜汁火方.png"},
+    {name:"宋嫂鱼羹",cate:"zhe",img:"./img/宋嫂鱼羹.png"},
+    {name:"干菜焖肉",cate:"zhe",img:"./img/干菜焖肉.png"},
+    {name:"荷叶粉蒸肉",cate:"zhe",img:"./img/荷叶粉蒸肉.png"},
+    {name:"钱塘醋鱼",cate:"zhe",img:"./img/钱塘醋鱼.png"},
+    // 东北菜
+    {name:"锅包肉",cate:"dongbei",img:"./img/锅包肉.png"},
+    {name:"地三鲜",cate:"dongbei",img:"./img/地三鲜.png"},
+    {name:"猪肉炖粉条",cate:"dongbei",img:"./img/猪肉炖粉条.png"},
+    {name:"小鸡炖蘑菇",cate:"dongbei",img:"./img/小鸡炖蘑菇.png"},
+    {name:"酸菜白肉锅",cate:"dongbei",img:"./img/酸菜白肉锅.png"},
+    {name:"溜肉段",cate:"dongbei",img:"./img/溜肉段.png"},
+    {name:"拔丝地瓜",cate:"dongbei",img:"./img/拔丝地瓜.png"},
+    {name:"东北大拉皮",cate:"dongbei",img:"./img/东北大拉皮.png"},
+    {name:"酱骨头",cate:"dongbei",img:"./img/酱骨头.png"},
+    {name:"酸菜饺子",cate:"dongbei",img:"./img/酸菜饺子.png"},
+    // 闽菜
+    {name:"佛跳墙",cate:"min",img:"./img/佛跳墙.png"},
+    {name:"荔枝肉",cate:"min",img:"./img/荔枝肉.png"},
+    {name:"醉排骨",cate:"min",img:"./img/醉排骨.png"},
+    {name:"海蛎煎",cate:"min",img:"./img/海蛎煎.png"},
+    {name:"同安封肉",cate:"min",img:"./img/同安封肉.png"},
+    {name:"南煎肝",cate:"min",img:"./img/南煎肝.png"},
+    {name:"红糟肉",cate:"min",img:"./img/红糟肉.png"},
+    // 徽菜
+    {name:"臭鳜鱼",cate:"hui",img:"./img/臭鳜鱼.png"},
+    {name:"毛豆腐",cate:"hui",img:"./img/毛豆腐.png"},
+    {name:"黄山炖鸽",cate:"hui",img:"./img/黄山炖鸽.png"},
+    {name:"问政山笋",cate:"hui",img:"./img/问政山笋.png"},
+    {name:"石耳炖鸡",cate:"hui",img:"./img/石耳炖鸡.png"},
+    // 家常小炒
+    {name:"番茄炒蛋",cate:"home",img:"./img/番茄炒蛋.png"},
+    {name:"青椒土豆丝",cate:"home",img:"./img/青椒土豆丝.png"},
+    {name:"木耳炒山药",cate:"home",img:"./img/木耳炒山药.png"},
+    {name:"红烧肉",cate:"home",img:"./img/红烧肉.png"},
+    {name:"蒜香西兰花",cate:"home",img:"./img/蒜香西兰花.png"},
+    {name:"干煸四季豆",cate:"home",img:"./img/干煸四季豆.png"},
+    {name:"红烧鸡块",cate:"home",img:"./img/红烧鸡块.png"},
+    {name:"干炸里脊",cate:"home",img:"./img/干炸里脊.png"},
+    {name:"韭菜炒蛋",cate:"home",img:"./img/韭菜炒蛋.png"},
+    {name:"红烧豆腐",cate:"home",img:"./img/红烧豆腐.png"},
+    {name:"洋葱炒牛肉",cate:"home",img:"./img/洋葱炒牛肉.png"},
+    {name:"清炒油麦菜",cate:"home",img:"./img/清炒油麦菜.png"},
+    {name:"糖醋荷包蛋",cate:"home",img:"./img/糖醋荷包蛋.png"},
+    {name:"豆角炒肉",cate:"home",img:"./img/豆角炒肉.png"},
+    {name:"苦瓜炒蛋",cate:"home",img:"./img/苦瓜炒蛋.png"},
+    {name:"芹菜炒香干",cate:"home",img:"./img/芹菜炒香干.png"},
+    {name:"爆炒猪肝",cate:"home",img:"./img/爆炒猪肝.png"},
+    {name:"香菇青菜",cate:"home",img:"./img/香菇青菜.png"},
+    {name:"丝瓜炒蛋",cate:"home",img:"./img/丝瓜炒蛋.png"},
+    {name:"冬瓜丸子汤",cate:"home",img:"./img/冬瓜丸子汤.png"},
+    {name:"宫保鸡丁",cate:"home",img:"./img/宫保鸡丁.png"},
+    {name:"可乐鸡翅",cate:"home",img:"./img/可乐鸡翅.png"},
+    {name:"肉末茄子",cate:"home",img:"./img/肉末茄子.png"},
+    {name:"糖醋排骨",cate:"home",img:"./img/糖醋排骨.png"},
+    {name:"鲫鱼豆腐汤",cate:"home",img:"./img/鲫鱼豆腐汤.png"},
+    {name:"凉拌黄瓜",cate:"home",img:"./img/凉拌黄瓜.png"},
+    {name:"凉拌黑木耳",cate:"home",img:"./img/凉拌黑木耳.png"},
+    {name:"梅菜扣肉",cate:"home",img:"./img/梅菜扣肉.png"},
+    {name:"红烧排骨",cate:"home",img:"./img/红烧排骨.png"},
+    {name:"土豆烧牛肉",cate:"home",img:"./img/土豆烧牛肉.png"},
+    {name:"蚂蚁上树",cate:"home",img:"./img/蚂蚁上树.png"},
+    {name:"蒜蓉空心菜",cate:"home",img:"./img/蒜蓉空心菜.png"},
+    {name:"蒸水蛋",cate:"home",img:"./img/蒸水蛋.png"},
+    {name:"莲藕排骨汤",cate:"home",img:"./img/莲藕排骨汤.png"},
+    {name:"小炒平菇",cate:"home",img:"./img/小炒平菇.png"},
+    {name:"肉沫豆腐",cate:"home",img:"./img/肉沫豆腐.png"}
+];
+
+// ========== 状态 ==========
+let currentCate = "all";
+let searchKeyword = "";
+let onlySelected = false;
+// cart: { 菜名: { p: 份数 } }   —— 只保留份数
+let cart = {};
+
+// ========== 本地存储 ==========
+function loadCart() {
+    try {
+        const raw = localStorage.getItem(CART_STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+                // 兼容旧格式，把 n 忽略，只保留 p
+                const cleaned = {};
+                Object.keys(parsed).forEach(name => {
+                    const item = parsed[name];
+                    const p = item.p || 0;
+                    if (p > 0) cleaned[name] = { p };
+                });
+                cart = cleaned;
+            }
+        }
+    } catch (e) {
+        cart = {};
+    }
+}
+function saveCart() {
+    try {
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch (e) {}
+}
+
+// ========== 工具 ==========
+function getCateName(cate) {
+    const map = {
+        hotpot: "火锅菜品", snack: "饮品炸物", sichuan: "川菜", xiang: "湘菜",
+        cantonese: "粤菜", huaiyang: "淮扬菜", shandong: "鲁菜", zhe: "浙菜",
+        dongbei: "东北菜", min: "闽菜", hui: "徽菜", home: "家常小炒"
+    };
+    return map[cate] || cate;
+}
+
+function getPortion(name) {
+    return cart[name] && cart[name].p ? cart[name].p : 0;
+}
+function setPortion(name, p) {
+    if (p <= 0) {
+        delete cart[name];
+    } else {
+        cart[name] = { p };
+    }
+    saveCart();
+}
+
+function selectedCount() {
+    return Object.keys(cart).filter(name => getPortion(name) > 0).length;
+}
+function totalDishCount() {
+    let total = 0;
+    Object.keys(cart).forEach(name => {
+        total += getPortion(name);
+    });
+    return total;
+}
+
+// ========== 渲染列表 ==========
+const foodListEl = document.getElementById("foodList");
+const filterCountEl = document.getElementById("filterCount");
+const searchInput = document.getElementById("searchInput");
+const onlySelectedEl = document.getElementById("onlySelected");
+const categoryWrap = document.getElementById("categoryWrap");
+const previewText = document.getElementById("previewText");
+const submitBtn = document.getElementById("submitBtn");
+const rightArea = document.getElementById("rightArea");
+
+// ========== 下单人（存 localStorage） ==========
+const USER_KEY = "xiaofanzhuo_user";
+const userNameInput = document.getElementById("userNameInput");
+function loadUser() {
+    try {
+        userNameInput.value = localStorage.getItem(USER_KEY) || "";
+    } catch (e) {}
+}
+userNameInput.addEventListener("input", () => {
+    try {
+        localStorage.setItem(USER_KEY, userNameInput.value.trim());
+    } catch (e) {}
+});
+
+function getFilteredList() {
+    return foodList.filter(item => {
+        if (currentCate !== "all" && item.cate !== currentCate) return false;
+        if (searchKeyword && !item.name.includes(searchKeyword)) return false;
+        if (onlySelected) {
+            if (getPortion(item.name) <= 0) return false;
+        }
+        return true;
+    });
+}
+
+function renderList() {
+    const list = getFilteredList();
+    foodListEl.innerHTML = "";
+
+    if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "list-empty";
+        empty.textContent = "暂无匹配菜品";
+        foodListEl.appendChild(empty);
+    } else {
+        list.forEach(item => {
+            const row = document.createElement("div");
+            row.className = "food-row";
+
+            // 图片
+            const imgWrap = document.createElement("div");
+            imgWrap.className = "food-img-wrap";
+            const img = document.createElement("img");
+            img.className = "food-img";
+            img.src = item.img;
+            img.alt = item.name;
+            img.loading = "lazy";
+            img.onerror = function() {
+                this.setAttribute("data-error", "1");
+                this.style.visibility = "hidden";
+            };
+            imgWrap.appendChild(img);
+
+            // 菜名
+            const nameEl = document.createElement("div");
+            nameEl.className = "food-name";
+            nameEl.textContent = item.name;
+            nameEl.title = item.name;
+
+            // 控制组 —— 只有份数
+            const ctrlGroup = document.createElement("div");
+            ctrlGroup.className = "ctrl-group";
+
+            const portionItem = document.createElement("div");
+            portionItem.className = "ctrl-item";
+            const portionName = document.createElement("span");
+            portionName.className = "ctrl-name";
+            portionName.textContent = "份数";
+            const portionCtrl = document.createElement("div");
+            portionCtrl.className = "ctrl";
+            const pMinus = document.createElement("button");
+            pMinus.type = "button";
+            pMinus.textContent = "−";
+            pMinus.setAttribute("aria-label", "减少份数");
+            const pNum = document.createElement("span");
+            pNum.className = "num";
+            pNum.textContent = getPortion(item.name);
+            const pPlus = document.createElement("button");
+            pPlus.type = "button";
+            pPlus.textContent = "+";
+            pPlus.setAttribute("aria-label", "增加份数");
+
+            pMinus.addEventListener("click", () => {
+                setPortion(item.name, getPortion(item.name) - 1);
+                pNum.textContent = getPortion(item.name);
+                updatePreview();
+                updateFilterCount();
+                if (onlySelected && getPortion(item.name) <= 0) {
+                    renderList();
+                }
+            });
+            pPlus.addEventListener("click", () => {
+                setPortion(item.name, getPortion(item.name) + 1);
+                pNum.textContent = getPortion(item.name);
+                updatePreview();
+                updateFilterCount();
+            });
+
+            portionCtrl.appendChild(pMinus);
+            portionCtrl.appendChild(pNum);
+            portionCtrl.appendChild(pPlus);
+            portionItem.appendChild(portionName);
+            portionItem.appendChild(portionCtrl);
+
+            ctrlGroup.appendChild(portionItem);
+
+                        row.appendChild(imgWrap);
+            row.appendChild(nameEl);
+            row.appendChild(ctrlGroup);
+            foodListEl.appendChild(row);
+        });
+    }
+    updateFilterCount();
+}
+
+function updateFilterCount() {
+    const count = selectedCount();
+    const total = totalDishCount();
+    if (count > 0) {
+        filterCountEl.textContent = `已选 ${count} 道 / 共 ${total} 份`;
+    } else {
+        filterCountEl.textContent = "";
+    }
+}
+
+// ========== 预览栏 ==========
+function updatePreview() {
+    const names = Object.keys(cart).filter(name => getPortion(name) > 0);
+    if (names.length === 0) {
+        previewText.textContent = "暂无";
+        return;
+    }
+    previewText.innerHTML = "";
+    names.forEach(name => {
+        const item = foodList.find(f => f.name === name);
+        const wrap = document.createElement("span");
+        wrap.className = "preview-item";
+
+        if (item && item.img) {
+            const img = document.createElement("img");
+            img.className = "preview-img";
+            img.src = item.img;
+            img.alt = name;
+            img.onerror = function() {
+                this.style.display = "none";
+            };
+            wrap.appendChild(img);
+        }
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "preview-name";
+        nameEl.textContent = name;
+        wrap.appendChild(nameEl);
+
+        const numEl = document.createElement("span");
+        numEl.className = "preview-num";
+        numEl.textContent = `×${getPortion(name)}`;
+        wrap.appendChild(numEl);
+
+        previewText.appendChild(wrap);
+    });
+}
+
+// ========== 分类切换 ==========
+categoryWrap.addEventListener("click", (e) => {
+    const item = e.target.closest(".category-item");
+    if (!item) return;
+    const cate = item.dataset.cate;
+    if (cate === currentCate) return;
+    currentCate = cate;
+
+    // 更新高亮
+    categoryWrap.querySelectorAll(".category-item").forEach(el => {
+        el.classList.toggle("active", el.dataset.cate === cate);
+    });
+
+    renderList();
+    rightArea.scrollTop = 0;
+});
+
+// ========== 搜索 ==========
+searchInput.addEventListener("input", () => {
+    searchKeyword = searchInput.value.trim();
+    renderList();
+    rightArea.scrollTop = 0;
+});
+
+// ========== 只看已选 ==========
+onlySelectedEl.addEventListener("change", () => {
+    onlySelected = onlySelectedEl.checked;
+    renderList();
+    rightArea.scrollTop = 0;
+});
+
+// ========== 提交订单 ==========
+submitBtn.addEventListener("click", async () => {
+    const names = Object.keys(cart).filter(name => getPortion(name) > 0);
+    if (names.length === 0) {
+        alert("请先选择菜品哦～");
+        return;
+    }
+    const user = userNameInput.value.trim();
+    if (!user) {
+        alert("请先填写下单人名字～");
+        userNameInput.focus();
+        return;
+    }
+
+    const summary = names.map(name => `${name}×${getPortion(name)}`).join("、");
+    const totalPortions = totalDishCount();
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "提交中...";
+
+    try {
+        const payload = {
+            records: [
+                {
+                    fields: {
+                        "下单人": user,
+                        "菜品": summary,
+                        "菜品明细": summary,
+                        "菜品数量": names.length,
+                        "总份数": totalPortions,
+                        "下单时间": new Date().toISOString()
+                    }
+                }
+            ]
+        };
+
+        const res = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        alert("提交成功！🎉\n" + summary);
+        cart = {};
+        saveCart();
+        updatePreview();
+        updateFilterCount();
+        renderList();
+    } catch (err) {
+        console.error("提交失败", err);
+        alert("提交失败，请检查网络后重试。\n" + (err.message || ""));
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交订单";
+    }
+});
+
+// ========== 初始化 ==========
+function init() {
+    loadCart();
+    loadUser();
+    renderList();
+    updatePreview();
+    updateFilterCount();
+}
+
+init();
+
+// 注册 Service Worker
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js", { scope: "./" })
+            .then((reg) => console.log("SW registered:", reg.scope))
+            .catch((err) => console.warn("SW register failed:", err));
+    });
+}
+</script>
+</body>
+</html>
